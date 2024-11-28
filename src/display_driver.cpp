@@ -8,6 +8,8 @@ void ST7735_init()
     _delay_ms(10);
     sendCommand(0x36);  // set MADCTL
     sendData(0xC0);     // MY = 1, MX = 1
+    sendCommand(0x26) ; // set default gamma
+    sendData(0x04);    // 2.2 gamma curve
     sendCommand(0x3A);  // set color mode
     sendData(0x05);     // 16-bit color
     sendData(0x14);     // RGB
@@ -20,7 +22,6 @@ void sendCommand(uint8_t cmd)
     CS_LOW;
     DC_COMMAND;
     SPI_SEND(cmd);
-    _delay_us(2);
     CS_HIGH;
 }
 
@@ -29,7 +30,6 @@ void sendData(uint8_t data)
     CS_LOW;
     DC_DATA;
     SPI_SEND(data);
-    _delay_us(2);
     CS_HIGH;
 }
 
@@ -48,22 +48,19 @@ char getLowByte16(uint16_t data)
 // set an area of the display for writing to, using reverse addressing so (0,0) is top left, (127,127) is bottom right
 void setMappingWindow(uint8_t xStart, uint8_t yStart, uint8_t xEnd, uint8_t yEnd)
 {
-    sendCommand(ST7735_CASET); // Column addr set command
-    sendData(0x00); //send high byte of xStart
-    //sendData((0x7F - xStart) + ColStart); //send low byte of xStart with column offset
+    sendCommand(ST7735_CASET);
+    sendData(0x00);
     sendData(xStart + ColStart);
-    sendData(0x00); //send high byte of xEnd
-    //sendData((0x7F - xEnd) + ColStart); //send low byte of xEnd with column offset
+    sendData(0x00);
     sendData(xEnd + ColStart);
 
-    sendCommand(ST7735_RASET); // Row addr set command
-    sendData(0x00); //send high byte of yStart
-    //sendData((0x7F - yStart) + RowStart); //send low byte of yStart with row offset
+    sendCommand(ST7735_RASET);
+    sendData(0x00);
     sendData(yStart + RowStart);
-    sendData(0x00); //send high byte of yEnd
-    sendData(yEnd + RowStart); //send low byte of yEnd with row offset
+    sendData(0x00);
+    sendData(yEnd + RowStart);
 
-    sendCommand(ST7735_RAMWR); // write to RAM
+    sendCommand(ST7735_RAMWR);
 }
 
 
