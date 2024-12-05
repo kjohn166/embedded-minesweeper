@@ -1,0 +1,1 @@
+flagging a mine sets grid value to 2, thus deleting all info that a mine existed there
