@@ -22,6 +22,8 @@ struct pixelRegion{
 // game graphics and functionality
 void initMinesweeper(uint8_t grid[10][10]);
 void initMineInfo(uint8_t grid[10][10], uint8_t mineInfo[10][10]);
+void clearMinesweeper(uint8_t grid[10][10]);
+void clearMineInfo(uint8_t mineInfo[10][10]);
 uint8_t isInBounds(selection possibleGrid);
 uint8_t getMinesAround(uint8_t grid[10][10], selection currGrid);
 uint8_t getMineInfo(uint8_t mineInfo[10][10], selection currGrid);

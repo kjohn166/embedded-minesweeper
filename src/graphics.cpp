@@ -4,6 +4,7 @@
 
 void initMinesweeper(uint8_t grid[10][10])
 {
+
     uint8_t randomNum1;
     uint8_t randomNum2;
 
@@ -23,6 +24,28 @@ void initMineInfo(uint8_t grid[10][10], uint8_t mineInfo[10][10])
         for(uint8_t j = 0; j < 10; j++)
         {
             mineInfo[i][j] = getMinesAround(grid, {i, j});
+        }
+    }
+}
+
+void clearMinesweeper(uint8_t grid[10][10])
+{
+    for (uint8_t i = 0; i < 10; i++)
+    {
+        for (uint8_t j = 0; j < 10; j++)
+        {
+            grid[i][j] = 0;
+        }
+    }
+}
+
+void clearMineInfo(uint8_t mineInfo[10][10])
+{
+    for (uint8_t i = 0; i < 10; i++)
+    {
+        for (uint8_t j = 0; j < 10; j++)
+        {
+            mineInfo[i][j] = 0;
         }
     }
 }
@@ -518,7 +541,51 @@ void drawCursor(uint8_t x, uint8_t y, uint8_t selection)
 }
 
 void drawGameModal(uint8_t gameResult) {
+    const int8_t modalWidth = (SCREEN_WIDTH / 2) + 30;
+    const int8_t modalHeight = (SCREEN_HEIGHT / 2) + 5;
+    pixelRegion modalRegion = {(SCREEN_WIDTH / 2) - (modalWidth / 2), (SCREEN_HEIGHT / 2) - (modalHeight / 2), (SCREEN_WIDTH / 2) - (modalWidth / 2) + modalWidth, (SCREEN_HEIGHT / 4) - (modalHeight / 4) + modalHeight};
 
+    // draw modal bounding box
+    drawRectangleWireframe(modalRegion.xStart, modalRegion.yStart, modalRegion.xEnd, modalRegion.yEnd, BLACK);
+    drawRectangle(modalRegion.xStart + 1, modalRegion.yStart + 1, modalRegion.xEnd - 1, modalRegion.yEnd - 1, GREY);
+     
+    // draw modal box details
+    drawRectangleWireframe(modalRegion.xStart + 1, modalRegion.yStart + 1, modalRegion.xEnd - 1, modalRegion.yEnd - 1, GREY_DETAIL_DARK);
+    drawRectangle(modalRegion.xStart + 1, modalRegion.yStart + 1, modalRegion.xStart + 1, modalRegion.yEnd - 2, GREY_HIGHLIGHT);
+    drawRectangle(modalRegion.xStart + 1, modalRegion.yStart + 1, modalRegion.xEnd - 2, modalRegion.yStart + 1, GREY_HIGHLIGHT);
+
+    // draw appropriate text
+    pixelRegion textRegion = {(modalRegion.xEnd + modalRegion.xStart) / 2 - (getTextWidth("YOU LOSE!") / 2), modalRegion.yStart + 8, modalRegion.xEnd - 2, modalRegion.yEnd - 8};
+
+    if (gameResult == 1) { // game win
+        writeString("YOU WIN!", textRegion.xStart, textRegion.yStart, BLACK);
+    }
+    else if (gameResult == 2) { // game lose
+        writeString("YOU LOSE!", textRegion.xStart, textRegion.yStart, BLACK);
+    }
+
+    // draw bounding boxes for modal selection buttons
+    pixelRegion leftButtonRegion = {modalRegion.xStart + 3, (modalRegion.yStart + 3) + int((modalRegion.yEnd - modalRegion.yStart) / 1.5) - 4, ((modalRegion.xEnd - modalRegion.xStart) / 2) + modalRegion.xStart, modalRegion.yEnd - 3};
+    pixelRegion rightButtonRegion = {((modalRegion.xEnd - modalRegion.xStart) / 2) + modalRegion.xStart, (modalRegion.yStart + 3) + int((modalRegion.yEnd - modalRegion.yStart) / 1.5) - 4, modalRegion.xEnd - 3, modalRegion.yEnd - 3};
+
+    drawRectangleWireframe(leftButtonRegion.xStart, leftButtonRegion.yStart, leftButtonRegion.xEnd, leftButtonRegion.yEnd, BLACK);
+    drawRectangleWireframe(rightButtonRegion.xStart, rightButtonRegion.yStart, rightButtonRegion.xEnd, rightButtonRegion.yEnd, BLACK);
+
+    // draw details for left button
+    drawRectangleWireframe(leftButtonRegion.xStart + 1, leftButtonRegion.yStart + 1, leftButtonRegion.xEnd - 1, leftButtonRegion.yEnd - 1, GREY_DETAIL_DARK);
+    drawRectangle(leftButtonRegion.xStart + 1, leftButtonRegion.yStart + 1, leftButtonRegion.xStart + 1, leftButtonRegion.yEnd - 2, GREY_HIGHLIGHT);
+    drawRectangle(leftButtonRegion.xStart + 1, leftButtonRegion.yStart + 1, leftButtonRegion.xEnd - 2, leftButtonRegion.yStart + 1, GREY_HIGHLIGHT);
+
+    // draw details for right button
+    drawRectangleWireframe(rightButtonRegion.xStart + 1, rightButtonRegion.yStart + 1, rightButtonRegion.xEnd - 1, rightButtonRegion.yEnd - 1, GREY_DETAIL_DARK);
+    drawRectangle(rightButtonRegion.xStart + 1, rightButtonRegion.yStart + 1, rightButtonRegion.xStart + 1, rightButtonRegion.yEnd - 2, GREY_HIGHLIGHT);
+    drawRectangle(rightButtonRegion.xStart + 1, rightButtonRegion.yStart + 1, rightButtonRegion.xEnd - 2, rightButtonRegion.yStart + 1, GREY_HIGHLIGHT);
+
+    // draw text for left button
+    writeString("RESET", ((leftButtonRegion.xEnd - leftButtonRegion.xStart) / 2 + leftButtonRegion.xStart) - (getTextWidth("RESET") / 2), leftButtonRegion.yStart + 5, BLACK);
+
+    // draw text for right button
+    writeString("EXIT", ((rightButtonRegion.xEnd - rightButtonRegion.xStart) / 2 + rightButtonRegion.xStart) - (getTextWidth("EXIT") / 2), rightButtonRegion.yStart + 5, BLACK);
 }
 
 
