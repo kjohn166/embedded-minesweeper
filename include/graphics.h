@@ -31,6 +31,7 @@ pixelRegion getGridPixelRegion(selection currGrid);
 pixelRegion getBoardPixelRegion();
 pixelRegion getMenuPixelRegion();
 void drawGrid();
+void drawCells(uint8_t grid[10][10], uint8_t mineInfo[10][10]);
 void drawMenuBox();
 void drawOuterDetails();
 void drawRightNumBox();
@@ -60,5 +61,9 @@ void drawGameModal(uint8_t gameResult);
 
 // start menu graphics
 void drawStartMenu();
+
+// pause menu graphics
+void drawPauseMenu();
+void clearModal();
 
 #endif /* GRAPHIC_H */

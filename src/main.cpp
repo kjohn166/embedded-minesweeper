@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <eeprom.h>
 
-#define NUM_TASKS 8
+#define NUM_TASKS 6
 
 // uninitialized game grid
 uint8_t grid[10][10] = {
@@ -44,8 +44,10 @@ uint8_t mineInfo [10][10] = {
 selection currSelection;
 unsigned long decodedVal;
 unsigned char mineCount;
-int8_t game_state; // 0 = playing, 1 = win, 2 = lose, 5 = start modal
+int8_t game_state; // 0 = playing, 1 = win, 2 = lose, 3 = pause, 5 = start modal
 unsigned char menuSelection; // 0 = start, 2 = temp
+unsigned char modalSelection; // 0 = reset, 1 = exit / save
+unsigned short timer;
 
 typedef struct _task{
     signed char state;
@@ -56,11 +58,9 @@ typedef struct _task{
 
 //task periods
 const unsigned long TIMER_PERIOD = 1000;
-const unsigned long INGAME_SELECT_PERIOD = 200;
-const unsigned long MENU_SELECT_PERIOD = 200;
+const unsigned long SELECT_PERIOD = 200;
 const unsigned long MENU_GRAPHICS_HANDLER_PERIOD = 500;
 const unsigned long MODAL_GRAPHICS_HANDLER_PERIOD = 500;
-const unsigned long MODAL_SELECT_PERIOD = 200;
 const unsigned long BUZZER_PERIOD = SNOTE;
 const unsigned long GAME_EVENT_PERIOD = 1000;
 const unsigned long GCD_PERIOD = 100;
@@ -68,11 +68,8 @@ const unsigned long GCD_PERIOD = 100;
 enum timer_states {timer_start, timer_update};
 int timer_tick(int);
 
-enum ingame_select_states {ingame_select_start, ingame_select_wait};
-int ingame_select_tick(int);
-
-enum menu_select_states {menu_select_start, menu_select_wait};
-int menu_select_tick(int);
+enum select_states {select_start, select_wait};
+int select_tick(int);
 
 enum menu_graphics_handler_states {menu_graphic_handler_start, menu_graphic_handler_wait};
 int menu_graphics_handler_tick(int);
@@ -80,22 +77,17 @@ int menu_graphics_handler_tick(int);
 enum modal_graphics_handler_states {modal_graphics_handler_start, modal_graphics_handler_wait};
 int modal_graphics_handler_tick(int);
 
-enum modal_select_states {modal_select_start, modal_select_wait};
-int modal_select_tick(int);
-
 enum Buzzer_states{Buzzer_Start, Buzzer_State1, Buzzer_State2};
 int buzzer_tick(int);
 
-enum game_event_states {game_start, game_playing, game_win, game_lose, game_win_loss_modal};
+enum game_event_states {game_start, game_reset, game_playing, game_win, game_lose, game_pause, game_win_loss_modal};
 int game_event_tick(int);
 
 _task tasks [] = {
     {timer_start, TIMER_PERIOD, TIMER_PERIOD, &timer_tick},
-    {ingame_select_start, INGAME_SELECT_PERIOD, INGAME_SELECT_PERIOD, &ingame_select_tick},
-    {menu_select_start, MENU_SELECT_PERIOD, MENU_SELECT_PERIOD, &menu_select_tick},
+    {select_start, SELECT_PERIOD, SELECT_PERIOD, &select_tick},
     {menu_graphic_handler_start, MENU_GRAPHICS_HANDLER_PERIOD, MENU_GRAPHICS_HANDLER_PERIOD, &menu_graphics_handler_tick},
     {modal_graphics_handler_start, MODAL_GRAPHICS_HANDLER_PERIOD, MODAL_GRAPHICS_HANDLER_PERIOD, &modal_graphics_handler_tick},
-    {modal_select_start, MODAL_SELECT_PERIOD, MODAL_SELECT_PERIOD, &modal_select_tick},
     {Buzzer_Start, BUZZER_PERIOD, BUZZER_PERIOD, &buzzer_tick},
     {game_start, GAME_EVENT_PERIOD, GAME_EVENT_PERIOD, &game_event_tick},
 };
@@ -134,6 +126,8 @@ int main(void)
     mineCount = 10;
     game_state = 5;
     menuSelection = 0;
+    modalSelection = 0;
+    timer = 0;
 
     // init game screen
     clearBG(GREY);
@@ -165,7 +159,6 @@ int main(void)
 
 int timer_tick(int state)
 {
-    static unsigned long i;
 
     switch(state)
     {
@@ -175,7 +168,7 @@ int timer_tick(int state)
             }
             else if (game_state == 0) {
                 state = timer_update;
-                i = 0;
+                timer = 0;
             }
             break;
 
@@ -185,7 +178,7 @@ int timer_tick(int state)
             }
             else if (game_state == 1 || game_state == 2) {
                 state = timer_start;
-                i = 0;
+                timer = 0;
             }
             break;
 
@@ -200,11 +193,11 @@ int timer_tick(int state)
 
         case timer_update:
             if (game_state == 0) {
-                updateTimer(i);  
+                updateTimer(timer);  
             }
             
-            i++;
-            if(i > 999) { i = 0; }
+            timer++;
+            if(timer > 999) { timer = 0; }
             break;
 
         default:
@@ -214,29 +207,27 @@ int timer_tick(int state)
     return state;
 }
 
-int ingame_select_tick(int state)
+int select_tick(int state)
 {
     static decode_results results;
     static selection prevSelection;
 
     switch(state)
     {
-        case ingame_select_start:
-            if(game_state == 0) {
+        case select_start:
                 if(!IRdecode(&results))
                 {
-                    state = ingame_select_start;
+                    state = select_start;
                 }
                 else
                 {
-                    state = ingame_select_wait;
+                    state = select_wait;
                     IRresume();
                 }
-            }
             break;
 
-        case ingame_select_wait:
-            state = ingame_select_start;
+        case select_wait:
+            state = select_start;
             decodedVal = results.value;
             prevSelection = currSelection;
 
@@ -251,32 +242,6 @@ int ingame_select_tick(int state)
                 {
                     if (currSelection.row + 1 >= 0 && currSelection.row + 1 < 10){
                         currSelection.row++;
-                    }
-                }
-                else if (decodedVal == 0xFF22DD) //left
-                {
-                    if (currSelection.column - 1 >= 0 && currSelection.column - 1 < 10){
-                        currSelection.column--;
-                    }
-                }
-                else if (decodedVal == 0xFFC23D) //right
-                {
-                    if (currSelection.column + 1 >= 0 && currSelection.column + 1 < 10){
-                        currSelection.column++;
-                    }
-                }
-                else if (decodedVal == 0xFF02FD) //select
-                {
-                    floodfillReveal(grid, mineInfo, currSelection);
-                    if(checkWin(grid)){
-                        drawEmoji(3, 60, 7, YELLOW);
-                        drawEmoji(0, 60, 7, BLACK);
-                        game_state = 1;
-                    }
-                    if(checkLose(grid)){
-                        drawEmoji(3, 60, 7, YELLOW);
-                        drawEmoji(1, 60, 7, BLACK);
-                        game_state = 2;
                     }
                 }
                 else if (decodedVal == 0xFFE21D) //flag
@@ -298,17 +263,112 @@ int ingame_select_tick(int state)
                 unhighlightGrid(prevSelection);
                 highlightGrid(currSelection);
             }
-            
-            if(game_state == 1)
+
+            // handling for all inputs which are used for different graphic menus
+            if (decodedVal == 0xFF02FD) //select
             {
-                unhighlightGrid(currSelection);
-                flagAllMines(grid);
+                if(game_state == 0) {
+                    floodfillReveal(grid, mineInfo, currSelection);
+                    if(checkWin(grid)){
+                        drawEmoji(3, 60, 7, YELLOW);
+                        drawEmoji(0, 60, 7, BLACK);
+                        modalSelection = 0;
+                        game_state = 1;
+                    }
+                    if(checkLose(grid)){
+                        drawEmoji(3, 60, 7, YELLOW);
+                        drawEmoji(1, 60, 7, BLACK);
+                        modalSelection = 0;
+                        game_state = 2;
+                    }
+                }
+                else if (game_state == 2 || game_state == 1) {
+                    if(modalSelection == 0) {
+                        clearBG(GREY);
+                        currSelection = {0, 0};
+                        mineCount = 10;
+                        game_state = 0;
+                        timer = 0;
+                    }
+                    else if(modalSelection == 1) {
+                        clearBG(GREY);
+                        game_state = 5;
+                    }
+                }
+                else if (game_state == 3) {
+                    if(modalSelection == 0) {
+                        clearBG(GREY);
+                        currSelection = {0, 0};
+                        mineCount = 10;
+                        timer = 0;
+                        game_state = 0;
+                    }
+                    else if(modalSelection == 1) {
+                        clearBG(GREY);
+                        game_state = 5;
+                    }
+                }
+                else if (game_state == 5) {
+                    if (menuSelection == 0) { // start
+                        clearBG(GREY);
+                        currSelection = {0, 0};
+                        mineCount = 10;
+                        timer = 0;
+                        game_state = 0;
+                    }
+                    else if (menuSelection == 1) { // temp
+
+                    }
+                }
             }
 
-            if(game_state == 2)
+            if (decodedVal == 0xFF22DD) //left
             {
-                unhighlightGrid(currSelection);
-                revealAllMines(grid, mineInfo);
+                if (game_state == 0) {
+                    if (currSelection.column - 1 >= 0 && currSelection.column - 1 < 10){
+                        currSelection.column--;
+                    }
+                    unhighlightGrid(prevSelection);
+                    highlightGrid(currSelection);
+                }
+                else if (game_state == 3 || game_state == 2 || game_state == 1) {
+                    modalSelection = 0;
+                    drawRectangle(75, 45, 91, 62, GREY);
+                }
+                else if (game_state == 5) {
+                    drawRectangle(90, 86, 106, 102, GREY); // draw over old cursor position
+                    menuSelection = 0;
+                }
+            }
+
+            if (decodedVal == 0xFFC23D) //right
+            {
+                if (game_state == 0) {
+                    if(currSelection.column + 1 >= 0 && currSelection.column + 1 < 10){
+                        currSelection.column++;
+                    }
+                    unhighlightGrid(prevSelection);
+                    highlightGrid(currSelection);
+                }
+                else if (game_state == 3 || game_state == 2 || game_state == 1) {
+                    modalSelection = 1;
+                    drawRectangle(31, 45, 47, 62, GREY);
+                }
+                else if (game_state == 5) {
+                    drawRectangle(20, 86, 36, 102, GREY);  // draw over old cursor position
+                    menuSelection = 1;
+                }
+            }
+
+            if (decodedVal == 0xFFA25D) { // pause
+                if(game_state == 0) {
+                    modalSelection = 0;
+                    game_state = 3;
+                }
+                else if(game_state == 3) {
+                    modalSelection = 2; // no selection
+                    game_state = 0;
+                }
             }
 
             decodedVal = 0;
@@ -321,78 +381,10 @@ int ingame_select_tick(int state)
 
     switch(state)
     {
-        case ingame_select_start:
+        case select_start:
             break;
 
-        case ingame_select_wait:
-            break;
-
-        default:
-            break;
-    }
-
-    return state;
-}
-
-int menu_select_tick(int state) {
-    static decode_results results;
-
-    switch (state) {
-        case menu_select_start:
-            if (game_state == 5) {
-                if(!IRdecode(&results))
-                {
-                    state = menu_select_start;
-                }
-                else
-                {
-                    state = menu_select_wait;
-                    IRresume();
-                }
-            }
-            state = menu_select_wait;
-            break;
-
-        case menu_select_wait:
-            state = menu_select_start;
-            decodedVal = results.value;
-
-            if (game_state == 5) {
-                if (decodedVal == 0xFF22DD) // left
-                {
-                    drawRectangle(90, 86, 106, 102, GREY); // draw over old cursor position
-                    menuSelection = 0;
-                }
-                else if (decodedVal == 0xFFC23D) // right
-                {
-                    drawRectangle(20, 86, 36, 102, GREY);  // draw over old cursor position
-                    menuSelection = 1;
-                }
-                else if (decodedVal == 0xFF02FD) // select
-                {
-                    if (menuSelection == 0) { // start
-                        clearBG(GREY);
-                        game_state = 0;
-                    }
-                    else if (menuSelection == 1) { // temp
-
-                    }
-                }
-            }
-
-            decodedVal = 0;
-            results.value = 0;
-            break;
-
-        default:
-            break;
-    }
-
-    switch (state) {
-        case menu_select_start:
-            break;
-
-        case menu_select_wait:
+        case select_wait:
             break;
 
         default:
@@ -471,13 +463,13 @@ int modal_graphics_handler_tick(int state)
     switch(state)
     {
         case modal_graphics_handler_start:
-            if(game_state != 2) {
+            if(game_state != 1 && game_state != 2 && game_state != 3) {
                 state = modal_graphics_handler_wait;
             }
             else {
                 state = modal_graphics_handler_start;
 
-                if (menuSelection == 0) {
+                if (modalSelection == 0) {
                     if (offset) {
                         drawRectangle(31, 46, 43, 46, GREY);
                     }
@@ -486,7 +478,7 @@ int modal_graphics_handler_tick(int state)
                         drawRectangle(40, 62, 41, 62, GREY);
                     }
                 }
-                else if (menuSelection == 1) {
+                else if (modalSelection == 1) {
                     if (offset) {
                         drawRectangle(75, 46, 87, 46, GREY);
                     }
@@ -501,7 +493,7 @@ int modal_graphics_handler_tick(int state)
             break;
 
         case modal_graphics_handler_wait:
-            if(game_state == 2) {
+            if(game_state == 2 || game_state == 1 || game_state == 3) {
                 state = modal_graphics_handler_start;
             }
             else {
@@ -519,72 +511,6 @@ int modal_graphics_handler_tick(int state)
             break;
 
         case modal_graphics_handler_wait:
-            break;
-
-        default:
-            break;
-    }
-
-    return state;
-}
-
-int modal_select_tick(int state) {
-    static decode_results results;
-
-    switch (state) {
-        case modal_select_start:
-            if (game_state == 1 || game_state == 2) {
-                if(!IRdecode(&results))
-                {
-                    state = menu_select_start;
-                }
-                else
-                {
-                    state = menu_select_wait;
-                    IRresume();
-                }
-            }
-            break;
-
-        case modal_select_wait:
-            state = modal_select_start;
-            decodedVal = results.value;
-
-            if (decodedVal == 0xFF22DD) // left
-            {
-                menuSelection = 0;
-                drawRectangle(75, 45, 91, 62, GREY);
-            }
-            else if (decodedVal == 0xFFC23D) // right
-            {
-                menuSelection = 1;
-                drawRectangle(31, 45, 47, 62, GREY);
-            }
-            else if (decodedVal == 0xFF02FD) // select
-            {
-                if(menuSelection == 0) {
-                    clearBG(GREY);
-                    game_state = 0;
-                }
-                else if(menuSelection == 1) {
-                    clearBG(GREY);
-                    game_state = 5;
-                }
-            }
-
-            decodedVal = 0;
-            results.value = 0;
-            break;
-
-        default:
-            break;
-    }
-
-    switch (state) {
-        case modal_select_start:
-            break;
-
-        case modal_select_wait:
             break;
 
         default:
@@ -679,25 +605,32 @@ int game_event_tick(int state)
                 state = game_start;
             }
             else if (game_state == 0) {
-                state = game_playing;
-
-                // init game data
-                currSelection = {0, 0};
-                mineCount = 10;
-                clearMinesweeper(grid);
-                clearMineInfo(mineInfo);
-                initMinesweeper(grid);
-                initMineInfo(grid, mineInfo);
-
-                // init game screen
-                drawGrid();
-                drawMenuBox();
-                drawOuterDetails();
-                drawEmoji(3, 60, 7, YELLOW);
-                drawEmoji(2, 60, 7, BLACK);
-                updateMineCounter(mineCount);
-                highlightGrid(currSelection);
+                if(menuSelection == 0) {
+                    state = game_reset;
+                }
+                else if(menuSelection == 1) {
+                    // game load button functionality for start menu
+                }
             }
+            break;
+
+        case game_reset:
+            state = game_playing;
+
+            // init game data
+            clearMinesweeper(grid);
+            clearMineInfo(mineInfo);
+            initMinesweeper(grid);
+            initMineInfo(grid, mineInfo);
+
+            // init game screen
+            drawGrid();
+            drawMenuBox();
+            drawOuterDetails();
+            drawEmoji(3, 60, 7, YELLOW);
+            drawEmoji(2, 60, 7, BLACK);
+            updateMineCounter(mineCount);
+            highlightGrid(currSelection);
             break;
 
         case game_playing:
@@ -706,7 +639,46 @@ int game_event_tick(int state)
             }
             else if (game_state == 1 || game_state == 2) {
                 state = game_win_loss_modal;
+                if(game_state == 1)
+                {
+                    unhighlightGrid(currSelection);
+                    flagAllMines(grid);
+                }
+                if(game_state == 2)
+                {
+                    unhighlightGrid(currSelection);
+                    revealAllMines(grid, mineInfo);
+                }
+
                 drawGameModal(game_state);
+            }
+            else if (game_state == 3) {
+                state = game_pause;
+                drawPauseMenu();
+            }
+            break;
+
+        case game_pause:
+            if (game_state == 5) {
+                state = game_start;
+                drawStartMenu();
+            }
+            else if (game_state == 0 && modalSelection == 0) {
+                state = game_reset;
+                clearModal();
+            }
+            else if (game_state == 0 && modalSelection == 1) {
+                state = game_start;
+                drawStartMenu();
+            }
+            else if (game_state == 0 && modalSelection == 2) {
+                state = game_playing;
+                clearModal();
+                drawCells(grid, mineInfo);
+                highlightGrid(currSelection);
+            }
+            else {
+                state = game_pause;
             }
             break;
 
@@ -719,8 +691,6 @@ int game_event_tick(int state)
                 state = game_playing;
 
                 // init game data
-                currSelection = {0, 0};
-                mineCount = 10;
                 clearMinesweeper(grid);
                 clearMineInfo(mineInfo);
                 initMinesweeper(grid);

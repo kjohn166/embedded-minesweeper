@@ -145,9 +145,43 @@ void drawGrid()
 
     pixelRegion region = getBoardPixelRegion();
 
-    drawRectangleWireframe(region.xStart - 1, region.yStart - 1, region.xEnd + 1, region.yEnd + 1, GREY_HIGHLIGHT);
-    drawRectangle(region.xStart - 1, region.yStart - 1, region.xStart - 1, region.yEnd + 1, GREY_DETAIL_DARK);
-    drawRectangle(region.xStart - 1, region.yStart - 1, region.xEnd + 1, region.yStart - 1, GREY_DETAIL_DARK);
+    drawRectangleWireframe(region.xStart - 2, region.yStart - 2, region.xEnd + 1, region.yEnd + 1, GREY_HIGHLIGHT);
+    drawRectangle(region.xStart - 2, region.yStart - 1, region.xStart - 2, region.yEnd, GREY_DETAIL_DARK);
+    drawRectangle(region.xStart - 2, region.yStart - 2, region.xEnd, region.yStart - 2, GREY_DETAIL_DARK);
+}
+
+void drawCells(uint8_t grid[10][10], uint8_t mineInfo[10][10])
+{
+    for(uint8_t i = 0; i < 10; i++){
+        for(uint8_t j = 0; j < 10; j++){
+            selection currGrid = {j, i};
+            pixelRegion region = getGridPixelRegion(currGrid);
+
+            if(grid[j][i] == 0 || grid[j][i] == 3) {
+                drawRectangleWireframe(region.xStart, region.yStart, region.xEnd, region.yEnd, BLACK);
+                drawRectangle(region.xStart + 1, region.yStart + 1, region.xEnd - 1, region.yStart + 1, GREY_HIGHLIGHT);
+                drawRectangle(region.xStart + 1, region.yStart + 1, region.xStart + 1, region.yEnd - 1, GREY_HIGHLIGHT);
+                drawRectangle(region.xEnd - 1, region.yEnd - 1, region.xEnd - 1, region.yStart + 1, GREY_DETAIL_DARK);
+                drawRectangle(region.xEnd - 1, region.yEnd - 1, region.xStart + 1, region.yEnd - 1, GREY_DETAIL_DARK);
+            }
+            else if (grid[j][i] == 1) {
+                drawRectangleWireframe(region.xStart, region.yStart, region.xEnd, region.yEnd, BLACK);
+                drawRectangle(region.xStart + 1, region.yStart + 1, region.xEnd - 1, region.yEnd - 1, GREY);
+                if (getMineInfo(mineInfo, currGrid) != 0)
+                {
+                    drawNum(getMineInfo(mineInfo, currGrid), region.xStart + 3, region.yStart + 3, RED);
+                }
+            }
+            else if (grid[j][i] == 2) {
+                drawRectangleWireframe(region.xStart, region.yStart, region.xEnd, region.yEnd, BLACK);
+                drawRectangle(region.xStart + 1, region.yStart + 1, region.xEnd - 1, region.yStart + 1, GREY_HIGHLIGHT);
+                drawRectangle(region.xStart + 1, region.yStart + 1, region.xStart + 1, region.yEnd - 1, GREY_HIGHLIGHT);
+                drawRectangle(region.xEnd - 1, region.yEnd - 1, region.xEnd - 1, region.yStart + 1, GREY_DETAIL_DARK);
+                drawRectangle(region.xEnd - 1, region.yEnd - 1, region.xStart + 1, region.yEnd - 1, GREY_DETAIL_DARK);
+                drawNum(11, region.xStart + 3, region.yStart + 3, ORANGE);
+            }
+        }
+    }
 }
 
 void drawMenuBox()
@@ -470,7 +504,8 @@ uint8_t flagAllMines(uint8_t grid[10][10])
     }
 }
 
-void drawStartMenu() {
+void drawStartMenu() 
+{
     pixelRegion region = {(SCREEN_WIDTH / 2) - ((BOMB_WIDTH - 1) / 2), (SCREEN_HEIGHT / 2) - ((BOMB_HEIGHT - 1) / 2), (SCREEN_WIDTH / 2) - ((BOMB_WIDTH - 1) / 2) + BOMB_WIDTH - 1, (SCREEN_HEIGHT / 2) - ((BOMB_HEIGHT - 1) / 2) + BOMB_HEIGHT - 1};
 
     for(uint16_t i = 0; i < BOMB_HEIGHT; i++)
@@ -524,7 +559,7 @@ void drawStartMenu() {
     drawRectangleWireframe(placeHolderButton.xStart + 1, placeHolderButton.yStart + 1, placeHolderButton.xEnd - 1, placeHolderButton.yEnd - 1, GREY_DETAIL_DARK);
     drawRectangle(placeHolderButton.xStart + 1, placeHolderButton.yStart + 1, placeHolderButton.xStart + 1, placeHolderButton.yEnd - 2, GREY_HIGHLIGHT);
     drawRectangle(placeHolderButton.xStart + 1, placeHolderButton.yStart + 1, placeHolderButton.xEnd - 2, placeHolderButton.yStart + 1, GREY_HIGHLIGHT);
-    writeString("TEMP", (placeHolderButtonWidth / 2) + placeHolderButton.xStart, (placeHolderButtonHeight / 2) + placeHolderButton.yStart + 2, BLACK);
+    writeString("LOAD", (placeHolderButtonWidth / 2) + placeHolderButton.xStart, (placeHolderButtonHeight / 2) + placeHolderButton.yStart + 2, BLACK);
 }
 
 void drawCursor(uint8_t x, uint8_t y, uint8_t selection)
@@ -540,7 +575,8 @@ void drawCursor(uint8_t x, uint8_t y, uint8_t selection)
     }
 }
 
-void drawGameModal(uint8_t gameResult) {
+void drawGameModal(uint8_t gameResult) 
+{
     const int8_t modalWidth = (SCREEN_WIDTH / 2) + 30;
     const int8_t modalHeight = (SCREEN_HEIGHT / 2) + 5;
     pixelRegion modalRegion = {(SCREEN_WIDTH / 2) - (modalWidth / 2), (SCREEN_HEIGHT / 2) - (modalHeight / 2), (SCREEN_WIDTH / 2) - (modalWidth / 2) + modalWidth, (SCREEN_HEIGHT / 4) - (modalHeight / 4) + modalHeight};
@@ -587,6 +623,59 @@ void drawGameModal(uint8_t gameResult) {
     // draw text for right button
     writeString("EXIT", ((rightButtonRegion.xEnd - rightButtonRegion.xStart) / 2 + rightButtonRegion.xStart) - (getTextWidth("EXIT") / 2), rightButtonRegion.yStart + 5, BLACK);
 }
+
+void drawPauseMenu() 
+{
+    const int8_t modalWidth = (SCREEN_WIDTH / 2) + 30;
+    const int8_t modalHeight = (SCREEN_HEIGHT / 2) + 5;
+    pixelRegion modalRegion = {(SCREEN_WIDTH / 2) - (modalWidth / 2), (SCREEN_HEIGHT / 2) - (modalHeight / 2), (SCREEN_WIDTH / 2) - (modalWidth / 2) + modalWidth, (SCREEN_HEIGHT / 4) - (modalHeight / 4) + modalHeight};
+
+    // draw modal bounding box
+    drawRectangleWireframe(modalRegion.xStart, modalRegion.yStart, modalRegion.xEnd, modalRegion.yEnd, BLACK);
+    drawRectangle(modalRegion.xStart + 1, modalRegion.yStart + 1, modalRegion.xEnd - 1, modalRegion.yEnd - 1, GREY);
+     
+    // draw modal box details
+    drawRectangleWireframe(modalRegion.xStart + 1, modalRegion.yStart + 1, modalRegion.xEnd - 1, modalRegion.yEnd - 1, GREY_DETAIL_DARK);
+    drawRectangle(modalRegion.xStart + 1, modalRegion.yStart + 1, modalRegion.xStart + 1, modalRegion.yEnd - 2, GREY_HIGHLIGHT);
+    drawRectangle(modalRegion.xStart + 1, modalRegion.yStart + 1, modalRegion.xEnd - 2, modalRegion.yStart + 1, GREY_HIGHLIGHT);
+
+    // draw appropriate text
+    pixelRegion textRegion = {(modalRegion.xEnd + modalRegion.xStart) / 2 - (getTextWidth("PAUSE") / 2), modalRegion.yStart + 8, modalRegion.xEnd - 2, modalRegion.yEnd - 8};
+    writeString("PAUSED", textRegion.xStart, textRegion.yStart, BLACK);
+
+    // draw bounding boxes for modal selection buttons
+    pixelRegion leftButtonRegion = {modalRegion.xStart + 3, (modalRegion.yStart + 3) + int((modalRegion.yEnd - modalRegion.yStart) / 1.5) - 4, ((modalRegion.xEnd - modalRegion.xStart) / 2) + modalRegion.xStart, modalRegion.yEnd - 3};
+    pixelRegion rightButtonRegion = {((modalRegion.xEnd - modalRegion.xStart) / 2) + modalRegion.xStart, (modalRegion.yStart + 3) + int((modalRegion.yEnd - modalRegion.yStart) / 1.5) - 4, modalRegion.xEnd - 3, modalRegion.yEnd - 3};
+
+    drawRectangleWireframe(leftButtonRegion.xStart, leftButtonRegion.yStart, leftButtonRegion.xEnd, leftButtonRegion.yEnd, BLACK);
+    drawRectangleWireframe(rightButtonRegion.xStart, rightButtonRegion.yStart, rightButtonRegion.xEnd, rightButtonRegion.yEnd, BLACK);
+
+    // draw details for left button
+    drawRectangleWireframe(leftButtonRegion.xStart + 1, leftButtonRegion.yStart + 1, leftButtonRegion.xEnd - 1, leftButtonRegion.yEnd - 1, GREY_DETAIL_DARK);
+    drawRectangle(leftButtonRegion.xStart + 1, leftButtonRegion.yStart + 1, leftButtonRegion.xStart + 1, leftButtonRegion.yEnd - 2, GREY_HIGHLIGHT);
+    drawRectangle(leftButtonRegion.xStart + 1, leftButtonRegion.yStart + 1, leftButtonRegion.xEnd - 2, leftButtonRegion.yStart + 1, GREY_HIGHLIGHT);
+
+    // draw details for right button
+    drawRectangleWireframe(rightButtonRegion.xStart + 1, rightButtonRegion.yStart + 1, rightButtonRegion.xEnd - 1, rightButtonRegion.yEnd - 1, GREY_DETAIL_DARK);
+    drawRectangle(rightButtonRegion.xStart + 1, rightButtonRegion.yStart + 1, rightButtonRegion.xStart + 1, rightButtonRegion.yEnd - 2, GREY_HIGHLIGHT);
+    drawRectangle(rightButtonRegion.xStart + 1, rightButtonRegion.yStart + 1, rightButtonRegion.xEnd - 2, rightButtonRegion.yStart + 1, GREY_HIGHLIGHT);
+
+    // draw text for left button
+    writeString("RESET", ((leftButtonRegion.xEnd - leftButtonRegion.xStart) / 2 + leftButtonRegion.xStart) - (getTextWidth("RESET") / 2), leftButtonRegion.yStart + 5, BLACK);
+
+    // draw text for right button
+    writeString("SAVE", ((rightButtonRegion.xEnd - rightButtonRegion.xStart) / 2 + rightButtonRegion.xStart) - (getTextWidth("SAVE") / 2), rightButtonRegion.yStart + 5, BLACK);
+}
+
+void clearModal()
+{
+    const int8_t modalWidth = (SCREEN_WIDTH / 2) + 30;
+    const int8_t modalHeight = (SCREEN_HEIGHT / 2) + 5;
+    pixelRegion modalRegion = {(SCREEN_WIDTH / 2) - (modalWidth / 2), (SCREEN_HEIGHT / 2) - (modalHeight / 2), (SCREEN_WIDTH / 2) - (modalWidth / 2) + modalWidth, (SCREEN_HEIGHT / 4) - (modalHeight / 4) + modalHeight};
+
+    drawRectangle(modalRegion.xStart, modalRegion.yStart, modalRegion.xEnd, modalRegion.yEnd, GREY);
+}
+
 
 
 
