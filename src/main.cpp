@@ -2,7 +2,6 @@
 #include <spiAVR.h>
 #include <display_driver.h>
 #include <graphics.h>
-#include <serialATmega.h>
 #include <irAVR.h>
 #include <timerISR.h>
 #include <music_driver.h>
@@ -62,7 +61,7 @@ const unsigned long SELECT_PERIOD = 200;
 const unsigned long MENU_GRAPHICS_HANDLER_PERIOD = 500;
 const unsigned long MODAL_GRAPHICS_HANDLER_PERIOD = 500;
 const unsigned long BUZZER_PERIOD = SNOTE;
-const unsigned long GAME_EVENT_PERIOD = 1000;
+const unsigned long GAME_EVENT_PERIOD = 500;
 const unsigned long GCD_PERIOD = 100;
 
 enum timer_states {timer_start, timer_update};
@@ -77,7 +76,7 @@ int menu_graphics_handler_tick(int);
 enum modal_graphics_handler_states {modal_graphics_handler_start, modal_graphics_handler_wait};
 int modal_graphics_handler_tick(int);
 
-enum Buzzer_states{Buzzer_Start, Buzzer_State1, Buzzer_State2};
+enum Buzzer_states{Buzzer_Wait, Buzzer_Start, Buzzer_State1, Buzzer_State2};
 int buzzer_tick(int);
 
 enum game_event_states {game_start, game_load, game_reset, game_playing, game_win, game_lose, game_pause, game_win_loss_modal};
@@ -88,7 +87,7 @@ _task tasks [] = {
     {select_start, SELECT_PERIOD, SELECT_PERIOD, &select_tick},
     {menu_graphic_handler_start, MENU_GRAPHICS_HANDLER_PERIOD, MENU_GRAPHICS_HANDLER_PERIOD, &menu_graphics_handler_tick},
     {modal_graphics_handler_start, MODAL_GRAPHICS_HANDLER_PERIOD, MODAL_GRAPHICS_HANDLER_PERIOD, &modal_graphics_handler_tick},
-    {Buzzer_Start, BUZZER_PERIOD, BUZZER_PERIOD, &buzzer_tick},
+    {Buzzer_Wait, BUZZER_PERIOD, BUZZER_PERIOD, &buzzer_tick},
     {game_start, GAME_EVENT_PERIOD, GAME_EVENT_PERIOD, &game_event_tick},
 };
 
@@ -300,8 +299,8 @@ int select_tick(int state)
                         clearBG(GREY);
                         currSelection = {0, 0};
                         mineCount = 10;
-                        timer = 0;
                         game_state = 0;
+                        timer = 0;
                     }
                     else if(modalSelection == 1) {
                         clearBG(GREY);
@@ -315,8 +314,8 @@ int select_tick(int state)
                         clearBG(GREY);
                         currSelection = {0, 0};
                         mineCount = 10;
-                        timer = 0;
                         game_state = 0;
+                        timer = 0;
                     }
                     else if (menuSelection == 1) { // load
                         clearBG(GREY);
@@ -531,6 +530,15 @@ int buzzer_tick(int state)
 
   switch(state)
   {
+    case Buzzer_Wait:
+      if(game_state != 5) {
+        state = Buzzer_Start;
+      }
+      else {
+        state = Buzzer_Wait;
+      }
+      break;
+
     case Buzzer_Start:
       state = Buzzer_State1;
       noteArrSize = MELODY2_INTRO_SIZE;
@@ -538,22 +546,24 @@ int buzzer_tick(int state)
       break;
 
     case Buzzer_State1:
-        if(i >= noteArrSize) { 
+        if(game_state == 5) {
+            state = Buzzer_Wait;
+        }
+        else if(i >= noteArrSize && game_state != 5) { 
             state = Buzzer_State2;
             noteArrSize = MELODY2_BRIDGE_SIZE;
             i = 0;
-        } else {
-            state = Buzzer_State1;
         }
       break;
 
     case Buzzer_State2:
-        if(i >= noteArrSize) { 
+        if(game_state == 5) {
+            state = Buzzer_Wait;
+        }
+        else if(i >= noteArrSize && game_state != 5) { 
             state = Buzzer_State1;
             noteArrSize = MELODY2_INTRO_SIZE;
             i = 0;
-        } else {
-            state = Buzzer_State2;
         }
       break;
 
@@ -563,6 +573,10 @@ int buzzer_tick(int state)
 
   switch(state)
   {
+    case Buzzer_Wait:
+        OCR1A = ICR1;
+        break;
+
     case Buzzer_Start:
       break;
 
@@ -751,10 +765,7 @@ int game_event_tick(int state)
         case game_playing:
             break;
 
-        case game_win:
-            break;
-
-        case game_lose:
+        case game_pause:
             break;
 
         case game_win_loss_modal:
