@@ -80,7 +80,7 @@ int modal_graphics_handler_tick(int);
 enum Buzzer_states{Buzzer_Start, Buzzer_State1, Buzzer_State2};
 int buzzer_tick(int);
 
-enum game_event_states {game_start, game_reset, game_playing, game_win, game_lose, game_pause, game_win_loss_modal};
+enum game_event_states {game_start, game_load, game_reset, game_playing, game_win, game_lose, game_pause, game_win_loss_modal};
 int game_event_tick(int);
 
 _task tasks [] = {
@@ -306,6 +306,8 @@ int select_tick(int state)
                     else if(modalSelection == 1) {
                         clearBG(GREY);
                         game_state = 5;
+
+                        storeGame(grid, mineInfo, mineCount, timer);
                     }
                 }
                 else if (game_state == 5) {
@@ -316,8 +318,9 @@ int select_tick(int state)
                         timer = 0;
                         game_state = 0;
                     }
-                    else if (menuSelection == 1) { // temp
-
+                    else if (menuSelection == 1) { // load
+                        clearBG(GREY);
+                        game_state = 0;
                     }
                 }
             }
@@ -609,9 +612,29 @@ int game_event_tick(int state)
                     state = game_reset;
                 }
                 else if(menuSelection == 1) {
-                    // game load button functionality for start menu
+                    state = game_load;
                 }
             }
+            break;
+
+        case game_load:
+            state = game_playing;
+
+            // load game data
+            clearMinesweeper(grid);
+            clearMineInfo(mineInfo);
+
+
+            loadGame(grid, mineInfo, mineCount, timer);
+
+            // init game screen
+            drawCells(grid, mineInfo);
+            drawMenuBox();
+            drawOuterDetails();
+            drawEmoji(3, 60, 7, YELLOW);
+            drawEmoji(2, 60, 7, BLACK);
+            updateMineCounter(mineCount);
+            highlightGrid(currSelection);
             break;
 
         case game_reset:
@@ -717,6 +740,12 @@ int game_event_tick(int state)
     switch(state)
     {
         case game_start:
+            break;
+
+        case game_load:
+            break;
+
+        case game_reset:
             break;
 
         case game_playing:

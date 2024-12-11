@@ -14,7 +14,7 @@ uint8_t eepromReadData(uint8_t address) {
     return EEDR;
 }
 
-void storeGame(uint8_t grid[10][10], uint8_t mineInfo[10][10], unsigned char mineCount, unsigned long time)
+void storeGame(uint8_t grid[10][10], uint8_t mineInfo[10][10], unsigned char mineCount, unsigned short time)
 {
     uint8_t currAddress = 0x01;
     for (uint8_t i = 0; i < 10; i++)
@@ -42,7 +42,7 @@ void storeGame(uint8_t grid[10][10], uint8_t mineInfo[10][10], unsigned char min
     eepromWriteData(currAddress, (time >> 8) & 0xFF);
 }
 
-void loadGame(uint8_t grid[10][10], uint8_t mineInfo[10][10], unsigned char* mineCount, unsigned long* time)
+void loadGame(uint8_t grid[10][10], uint8_t mineInfo[10][10], unsigned char &mineCount, unsigned short &time)
 {
     uint8_t currAddress = 0x01;
     for (uint8_t i = 0; i < 10; i++)
@@ -63,9 +63,9 @@ void loadGame(uint8_t grid[10][10], uint8_t mineInfo[10][10], unsigned char* min
         }
     }
 
-    *mineCount = eepromReadData(currAddress);
+    mineCount = eepromReadData(currAddress);
     currAddress++;
-    *time = eepromReadData(currAddress);
+    time = eepromReadData(currAddress);
     currAddress++;
-    *time |= (uint16_t)(eepromReadData(currAddress)) << 8;
+    time |= (uint16_t)(eepromReadData(currAddress)) << 8;
 }
